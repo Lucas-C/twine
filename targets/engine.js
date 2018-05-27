@@ -1368,9 +1368,10 @@ Tale.prototype.setPageElements = function() {
 **
 */
 
-function Wikifier(place, source) {
+function Wikifier(place, source, noStartWithParagraph) {
     this.source = source;
     this.output = place;
+    this.noStartWithParagraph = noStartWithParagraph;
     this.nextMatch = 0;
     this.assembleFormatterMatches(Wikifier.formatters);
     this.subWikify(this.output);
@@ -1400,8 +1401,10 @@ Wikifier.prototype.assembleFormatterMatches = function (formatters) {
 
 Wikifier.prototype.subWikify = function (output, terminator) {
     // Temporarily replace the output pointer
-    var terminatorMatch, formatterMatch, oldOutput = this.output;
-    this.output = output;
+    var terminatorMatch, formatterMatch, oldSubWikifyOutput = this.subWikifyOutput, oldOutput = this.output;
+    this.subWikifyOutput = output;
+    this.output = document.createElement('p'); // tmp output
+    this.output.style.margin = 0;
 
     // Prepare the terminator RegExp
     var terminatorRegExp = terminator ? new RegExp("(" + terminator + ")", "mg") : null;
@@ -1427,11 +1430,13 @@ Wikifier.prototype.subWikify = function (output, terminator) {
             this.nextMatch = terminatorMatch.index + terminatorMatch[1].length;
 
             // Restore the output pointer and exit
+            this.endParagraph('final');
+            this.subWikifyOutput = oldSubWikifyOutput;
             this.output = oldOutput;
             return;
         }
         // Check for a formatter match
-        else if (formatterMatch) {
+        if (formatterMatch) {
             // Output any text before the match
             if (formatterMatch.index > this.nextMatch) this.outputText(this.output, this.nextMatch, formatterMatch.index);
 
@@ -1463,12 +1468,33 @@ Wikifier.prototype.subWikify = function (output, terminator) {
     }
 
     // Restore the output pointer
+    this.endParagraph('final');
+    this.subWikifyOutput = oldSubWikifyOutput;
     this.output = oldOutput;
 };
 
 Wikifier.prototype.outputText = function (place, startPos, endPos) {
     if (place) {
         insertText(place, this.source.substring(startPos, endPos));
+    }
+};
+
+Wikifier.prototype.endParagraph = function(context) {
+    if (!this.output.hasChildNodes()) {
+        insertElement(this.subWikifyOutput, 'br');
+        return;
+    }
+    if (this.subWikifyOutput.tagName === 'P' || (!this.subWikifyOutput.hasChildNodes() && (context === 'final' || this.noStartWithParagraph))) {
+        while (this.output.hasChildNodes()) {
+            this.subWikifyOutput.appendChild(this.output.firstChild);
+        }
+        if (this.noStartWithParagraph && context === 'lineBreak') {
+            insertElement(this.subWikifyOutput, 'br');
+        }
+    } else {
+        this.subWikifyOutput.appendChild(this.output);
+        this.output = document.createElement('p');
+        this.output.style.margin = 0;
     }
 };
 
@@ -1864,7 +1890,7 @@ Wikifier.formatters = [
             img = insertElement(e, "img");
             if (lookaheadMatch[1]) img.align = "left";
             else if (lookaheadMatch[2]) img.align = "right";
-            if (lookaheadMatch[3]) img.title = lookaheadMatch[3];
+            if (lookaheadMatch[3]) img.alt = img.title = lookaheadMatch[3];
             // Setup the image if it's referencing an image passage.
             this.importedImage(img,lookaheadMatch[4]);
             w.nextMatch = lookaheadMatch.index + lookaheadMatch[0].length;
@@ -2011,7 +2037,7 @@ Wikifier.formatters = [
     name: "lineBreak",
     match: "\\n",
     handler: function (w) {
-        insertElement(w.output, "br");
+        w.endParagraph('lineBreak');
     }
 },
 {

@@ -91,6 +91,7 @@ History.prototype.display = function (title, source, type, callback) {
         }
     }
     window.scroll(0, 0)
+    e.focus()
     return e
 };
 History.prototype.watchHash = function () {
@@ -118,6 +119,7 @@ History.prototype.loadLinkVars = function() {
 Passage.prototype.render = function () {
     var b = insertElement(null, 'div', 'passage' + this.title, 'passage');
     b.style.visibility = 'hidden';
+    b.setAttribute('tabindex', 0);
     this.setTags(b);
     this.setCSS();
     insertElement(b, 'div', '', 'header');

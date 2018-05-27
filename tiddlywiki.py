@@ -179,7 +179,7 @@ class TiddlyWiki(object):
                 tiddler.text = ''.join([(str(k)+":"+str(v)+"\n") for k,v in self.storysettings.iteritems()])
             if self.NOINCLUDE_TAGS.isdisjoint(tiddler.tags):
                 storyfragments.append(tiddler.toHtml(rot13 and tiddler.isObfuscateable()))
-        storycode = u''.join(storyfragments)
+        storycode = u'\n'.join(storyfragments)
 
         if output.count('"STORY_SIZE"') > 0:
             output = output.replace('"STORY_SIZE"', '"' + str(len(storyfragments)) + '"')
